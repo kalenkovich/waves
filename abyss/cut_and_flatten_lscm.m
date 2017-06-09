@@ -1,0 +1,69 @@
+function [planar_mesh, G, index_mapping] = cut_and_flatten(cortex, ...
+    vertex_id, gain_matrix, PARAMS)
+    
+    % Remove the vertices that are cartesian-far from the central vertex
+    [cortex_reduced, index_mapping] = reduce_surface(cortex, ...
+        vertex_id, PARAMS.max_distance);
+
+    % Remove the columns of the gain matrix corresponding to the removed
+    % vertices  
+    G = gain_matrix(:, ~isnan(index_mapping));
+    
+    % Flatten neigbours of the central vertex
+    [neighbours_idx, flat_coordinates] = flatten_around_a_vertex( ...
+        cortex_reduced, index_mapping(vertex_id));
+    % Now, unfold using LSCM with above points as fixed
+    flat = lscm(cortex_reduced.Vertices, cortex_reduced.Faces, ...
+        neighbours_idx', flat_coordinates);
+    
+    planar_mesh = struct('Vertices', flat, 'Faces', cortex_reduced.Faces);
+    
+    if isfield(PARAMS, 'visualize') ...
+            && isfield(PARAMS.visualize, 'flattening') ...
+            && PARAMS.visualize.flattening == true
+        
+        % cortex and reduced
+        figure; hold on;
+        colors = ones(1, size(cortex.Vertices, 1));
+        cortex_patch = trimesh(cortex.Faces, cortex.Vertices(:, 1), ... 
+            cortex.Vertices(:, 2), cortex.Vertices(:, 3), colors);
+
+        colors_reduced = 5*ones(1, sum(~isnan(index_mapping)));
+        reduced_patch = trimesh(cortex_reduced.Faces, ... 
+            cortex.Vertices(~isnan(index_mapping), 1), ...
+            cortex.Vertices(~isnan(index_mapping), 2), ...
+            cortex.Vertices(~isnan(index_mapping), 3), ...
+            colors_reduced);
+        
+        hold off;
+        
+        % reduced with central vertex and its neigbours
+        figure; hold on;
+        
+        colors_reduced = 2*ones(1, sum(~isnan(index_mapping)));
+        reduced_patch = trimesh(cortex_reduced.Faces, ... 
+            cortex.Vertices(~isnan(index_mapping), 1), ...
+            cortex.Vertices(~isnan(index_mapping), 2), ...
+            cortex.Vertices(~isnan(index_mapping), 3), ...
+            colors_reduced);
+        
+        scatter3(...
+            cortex_reduced.Vertices(neighbours_idx, 1), ...
+            cortex_reduced.Vertices(neighbours_idx, 2), ...
+            cortex_reduced.Vertices(neighbours_idx, 3), ...
+            'filled');
+        
+        hold off;
+        
+        % flattened with central vertex and its neigbours
+        figure; hold on;
+        
+        triplot(planar_mesh.Faces, ...
+            planar_mesh.Vertices(:, 1), ...
+            planar_mesh.Vertices(:, 2), 'm');
+        scatter(flat_coordinates(:,1), flat_coordinates(:,2), 'filled');
+        
+        hold off;
+   end
+    
+end
