@@ -7,21 +7,22 @@ PARAMS.study_name = 'jordy_spont03';
 PARAMS.channels_idx = 32:99;
 PARAMS.sampling_rate = 250;
 
-PARAMS.cortex.low.comment = 'cortex_15002V';
-PARAMS.visualize.flattening = false;
 
 PARAMS.max_distance = 0.04;
-
 PARAMS.forward.name = 'Overlapping spheres';
-PARAMS.first_peak.comment = 'spike_peak1';
+
+
 
 %% Load and procees the cortex and the measurements
 
 % Load and flatten the cortical sheet or load if precalculated. Will take
 % several hours if not precalculated.
+PARAMS.cortex.low.comment = 'cortex_15002V';
+PARAMS.visualize.flattening = false;
 cortex = flatten_cortex_or_load(PARAMS, 'low');
 
 % Load spike trials
+PARAMS.first_peak.comment = 'spike_peak1';
 meas = from_bst_get_measurements(PARAMS.first_peak.comment, PARAMS);
 
 %% Generate waves and project them onto sensors
