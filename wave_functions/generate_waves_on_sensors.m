@@ -7,6 +7,24 @@ function sensor_waves = generate_waves_on_sensors(cortex, PARAMS)
 
     % Load the forward-model matrix
     G = from_bst_get_gain_matrix(PARAMS.forward.name, PARAMS);
+    
+    % Sometimes we only need waves to start from a subset of indices. This
+    % is controlled by a PARAMS.wave.seed_vertex_inds parameter.
+    vertex_cnt = size(cortex.Vertices, 1);
+    if ~isfield(PARAMS.wave, 'seed_vertex_inds') || ...
+            isempty(PARAMS.wave.seed_vertex_inds)
+        seed_vertex_inds = 1:vertex_cnt;
+        seed_vertex_cnt = vertex_cnt;
+    else
+        seed_vertex_inds = PARAMS.wave.seed_vertex_inds;
+        seed_vertex_cnt = length(seed_vertex_inds);
+        % Access to columns of the sparse matrices is faster, so here we
+        % will transpose everything
+        cortex.distances = cortex.distances';
+        cortex.angles = cortex.angles';
+        cortex.distances = cortex.distances(:, seed_vertex_inds)';
+        cortex.angles = cortex.angles(:, seed_vertex_inds)';
+    end
 
     % Zeros on the diagonal of the distance matrix represent actual zeros
     % while the other zeros are actually infinities. For angles the scheme
@@ -14,11 +32,10 @@ function sensor_waves = generate_waves_on_sensors(cortex, PARAMS)
     % column index, value) triplets.
     [i, j, r] = find(cortex.distances);
     phi = full(cortex.angles(cortex.distances ~= 0));
-    vertex_cnt = size(cortex.distances, 1);
-    i = vertcat(i, [1:vertex_cnt]');
-    j = vertcat(j, [1:vertex_cnt]');
-    r = vertcat(r, zeros(vertex_cnt, 1));
-    phi = vertcat(phi, zeros(vertex_cnt, 1));
+    i = vertcat(i, seed_vertex_inds');
+    j = vertcat(j, seed_vertex_inds');
+    r = vertcat(r, zeros(seed_vertex_cnt, 1));
+    phi = vertcat(phi, zeros(seed_vertex_cnt, 1));
     
     % This is the meshgrid we will generate waves on for normalization
     % purposes
@@ -82,7 +99,8 @@ function sensor_waves = generate_waves_on_sensors(cortex, PARAMS)
                 sqrt(integral_over_grid(x, y, norm_wave)), norm_waves, 'un', 0);
             
             waves = cellfun(@(dir_mask, factor) ...
-                sparse(i, j, ripple_wave_v .* dir_mask / factor) * G', ...
+                sparse(i, j, ripple_wave_v .* dir_mask / factor, ...
+                       seed_vertex_cnt, vertex_cnt) * G', ...
                 direction_masks, norm_factors, 'un', 0);
             
             [sensor_waves{speed_id, :, time_point_id}] = ...

@@ -31,6 +31,7 @@ PARAMS.wave.angular_half_width = pi/4;
 PARAMS.wave.duration = 0.02; % (s)
 PARAMS.wave.directions = [NaN pi/4*[0:7]];
 PARAMS.wave.speeds = 0.1:0.1:1; % (mm/ms = m/s)
+PARAMS.wave.seed_vertex_inds = 1:100;
 
 sensor_waves = generate_or_load_waves_on_sensors(cortex, PARAMS, 'low');
 
